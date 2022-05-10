@@ -3,11 +3,27 @@
 import ipaddress
 import argparse
 import sys
+import json
 
 o365servicelistURL = 'https://endpoints.office.com/endpoints/worldwide?clientrequestid=b10c5ed1-bad1-445f-b386-b919946339a7'
+o365endpoint_json = 'o365endpoints.json'
+
+def write_to_file(data):
+    with open(o365endpoint_json, 'w') as f:
+        json.dump(data, f)
+
+def load_o365endpoints():
+    import os.path
+    if os.path.exists(o365endpoint_json):
+        with open(o365endpoint_json, 'r') as f:
+            return json.loads(f.read())
+    else:
+        data = get_o365servicelist(o365servicelistURL)
+        write_to_file(data)
+        return data
 
 def get_o365servicelist(url):
-    import json,urllib.request
+    import urllib.request
     data = urllib.request.urlopen(url).read()
     return json.loads(data)
 
@@ -65,11 +81,16 @@ def runreport(ip,ipver,servicelist):
                             ret_data[service['serviceArea']][key] = value
                         print(ret_data)
 
-servicelist = get_o365servicelist(o365servicelistURL)
+servicelist = load_o365endpoints()
 
-parser = argparse.ArgumentParser(description='Choose file input or stdin')
+parser = argparse.ArgumentParser(description='Choose file input [--file] or use stdin')
 parser.add_argument('--file', help='provide a list of IPs - 1 per line')
+parser.add_argument('-p', default=False, help='Pull fresh list from O365')
 args = parser.parse_args()
+
+if args.p:
+    servicelist = get_o365servicelist(o365servicelistURL)
+    write_to_file(servicelist)
 
 if args.file:
     with open(args.file) as data:
